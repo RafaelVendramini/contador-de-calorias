@@ -21,6 +21,8 @@ export default function Home() {
     const { user, signOut } = useAuth();
     const router = useRouter();
     const foodsDatabase = useFoodsDatabase();
+
+    const userId = user?.id;
     
     // Redireciona para o login se não estiver autenticado
     if (!user) {
@@ -33,7 +35,12 @@ export default function Home() {
         }
 
         try {
-            await foodsDatabase.create({date: new Date(), name: foodName, calories: Number(calories)});
+            const newFood = await foodsDatabase.create({
+                name: foodName,
+                calories: Number(calories),
+                date: new Date(), 
+                id_user: userId!
+            })
             setFoodName('');
             setCalories('');
             loadFoods();
@@ -45,13 +52,23 @@ export default function Home() {
 
     async function listFoodsByCurrentDate() {
         try {
-            const foods = await foodsDatabase.listByCurrentDate() as FoodDatabase[];
+            const foods = await foodsDatabase.listByCurrentDate(userId as number) as FoodDatabase[];
             setFoods(foods);
         } catch (error) {
             console.error('Erro ao carregar alimentos:', error);
             Alert.alert('Erro', 'Não foi possível carregar os alimentos');
         }
     }
+
+    // const loadFoods = async () => {
+    //     try {
+    //         const foodsList = await foodsDatabase.listByCurrentDate(user.id);
+    //         setFoods(foodsList);
+    //     } catch (error) {
+    //         console.error('Erro ao carregar alimentos:', error);
+    //         Alert.alert('Erro', 'Não foi possível carregar os alimentos');
+    //     }
+    // };
 
     useEffect(() => {
         listFoodsByCurrentDate();
@@ -85,7 +102,8 @@ export default function Home() {
 
     const loadFoods = async () => {
         try {
-            const foodsList = await foodsDatabase.listByCurrentDate();
+            const foodsList = await foodsDatabase.listByCurrentDate(userId as number) as FoodDatabase[];
+            console.log('Alimentos carregados:', foodsList);
             setFoods(foodsList);
         } catch (error) {
             console.error('Erro ao carregar alimentos:', error);

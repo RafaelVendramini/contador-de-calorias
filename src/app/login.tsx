@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import {Text, Button, Alert } from 'react-native';
+import {Text, Button, Alert, Modal, View, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
 import { useUsersDatabase } from '@/database/UseUsersDatabase';
@@ -11,6 +11,8 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState({ email: '', password: '' });
+    const [modalVisible, setModalVisible] = useState(false);
+    const [recoveryEmail, setRecoveryEmail] = useState('');
 
     const userDataBase = useUsersDatabase();
     const router = useRouter();
@@ -60,27 +62,164 @@ export default function Login() {
         }
     }
 
+    async function handlePasswordRecovery() {
+        if (!recoveryEmail.trim() || !/\S+@\S+\.\S+/.test(recoveryEmail)) {
+            Alert.alert("Erro", "Digite um email válido");
+            return;
+        }
+
+        try {
+            // Aqui você implementaria a lógica de recuperação de senha
+            Alert.alert("Sucesso", "Se o email existir, você receberá as instruções de recuperação");
+            setModalVisible(false);
+            setRecoveryEmail('');
+        } catch (error) {
+            Alert.alert("Erro", "Ocorreu um erro ao processar sua solicitação");
+        }
+    }
+
     return (
-        <SafeAreaView style={{ flex: 1, justifyContent: 'center', padding: 32, gap: 16 }}>
-            <Text style={{ textAlign: 'center', fontSize: 28, fontWeight: 'bold' }}>Login</Text>
-            <Input 
-                placeholder='Email' 
-                onChangeText={setEmail} 
-                value={email}
-                error={errors.email}
-            />
-            <Input 
-                placeholder='Password' 
-                onChangeText={setPassword} 
-                value={password} 
-                secureTextEntry={true}
-                error={errors.password}
-            />
-            <Button title='Login' onPress={login} />
-            
-            <Link href="/cadastro" style={{ textAlign: 'center', color: 'blue', marginTop: 50 }}>
-                <Text>Ir para Cadastro</Text>
-            </Link>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+            <View style={{ 
+                padding: 24,
+                flex: 1,
+                gap: 24
+            }}>
+                <Text style={{ 
+                    fontSize: 32,
+                    fontWeight: 'bold',
+                    color: '#0F172A',
+                    marginTop: 20,
+                    marginBottom: 32
+                }}>
+                    Login
+                </Text>
+
+                <View style={{ gap: 16 }}>
+                    <Input 
+                        placeholder='Email' 
+                        onChangeText={setEmail} 
+                        value={email}
+                        error={errors.email}
+                    />
+                    <Input 
+                        placeholder='Password' 
+                        onChangeText={setPassword} 
+                        value={password} 
+                        secureTextEntry={true}
+                        error={errors.password}
+                    />
+                </View>
+
+                <View style={{ gap: 12 }}>
+                    <TouchableOpacity 
+                        onPress={login}
+                        style={{
+                            backgroundColor: '#0F172A',
+                            padding: 16,
+                            borderRadius: 8,
+                            alignItems: 'center'
+                        }}
+                    >
+                        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
+                            Login
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => setModalVisible(true)}>
+                        <Text style={{ 
+                            textAlign: 'center',
+                            color: '#0F172A',
+                            fontSize: 14,
+                            textDecorationLine: 'underline'
+                        }}>
+                            Esqueceu sua senha?
+                        </Text>
+                    </TouchableOpacity>
+
+                    <Link href="/cadastro" asChild>
+                        <TouchableOpacity>
+                            <Text style={{ 
+                                textAlign: 'center',
+                                color: '#0F172A',
+                                fontSize: 14,
+                                textDecorationLine: 'underline'
+                            }}>
+                                Ir para Cadastro
+                            </Text>
+                        </TouchableOpacity>
+                    </Link>
+                </View>
+            </View>
+
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)'
+                }}>
+                    <View style={{
+                        backgroundColor: '#FFFFFF',
+                        padding: 24,
+                        borderRadius: 16,
+                        width: '90%',
+                        gap: 24
+                    }}>
+                        <Text style={{ 
+                            fontSize: 24,
+                            fontWeight: 'bold',
+                            color: '#0F172A',
+                            textAlign: 'center'
+                        }}>
+                            Recuperação de Senha
+                        </Text>
+                        <Input
+                            placeholder='Digite seu email'
+                            onChangeText={setRecoveryEmail}
+                            value={recoveryEmail}
+                        />
+                        <View style={{ gap: 12 }}>
+                            <TouchableOpacity 
+                                onPress={handlePasswordRecovery}
+                                style={{
+                                    backgroundColor: '#0F172A',
+                                    padding: 16,
+                                    borderRadius: 8,
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
+                                    Enviar
+                                </Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity 
+                                onPress={() => {
+                                    setModalVisible(false);
+                                    setRecoveryEmail('');
+                                }}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: '#0F172A',
+                                    padding: 16,
+                                    borderRadius: 8,
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <Text style={{ color: '#0F172A', fontSize: 16, fontWeight: '600' }}>
+                                    Cancelar
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

@@ -14,7 +14,9 @@ export async function initializeDatabase(database: SQLiteDatabase) {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             calories INTEGER NOT NULL,
-            current_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            current_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            id_user INTEGER NOT NULL,
+            FOREIGN KEY (id_user) REFERENCES users(id)
         );`
     ); 
 }
