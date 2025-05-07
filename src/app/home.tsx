@@ -175,11 +175,7 @@ export default function Home() {
                             </View>
                         )}
                         style={styles.foodList}
-                        // Se a FlatList estiver dentro de um ScrollView e você quiser que o ScrollView principal controle a rolagem:
-                        // scrollEnabled={false} 
-                        // No entanto, para listas potencialmente longas, é melhor deixar a FlatList gerenciar sua própria virtualização e rolagem interna.
-                        // Se a lista for pequena, scrollEnabled={false} pode ser uma opção para evitar conflitos de gestos.
-                        // Por agora, vamos manter o padrão da FlatList.
+                        scrollEnabled={false} // Adicionado para desabilitar a rolagem da FlatList
                     />
                 )}
             </View>
