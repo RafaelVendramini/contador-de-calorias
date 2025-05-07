@@ -115,15 +115,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!user) {
             throw new Error('Usuário não autenticado');
         }
-
         try {
             const currentUser = await userDatabase.findByEmail(user.email);
+           
 
             if (!currentUser) {
                 throw new Error('Usuário não encontrado');
             }
 
-            if (currentUser.senha !== senhaAtual) {
+            if (currentUser.password !== senhaAtual) {
                 throw new Error('Senha atual incorreta');
             }
 

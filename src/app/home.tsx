@@ -1,6 +1,6 @@
 import { Redirect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, FlatList, Text, TextInput, View, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { FlatList, Text, View, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { useState, useEffect } from "react";
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -29,50 +29,47 @@ export default function Home() {
         return <Redirect href="/login" />;
     }
 
+    const loadFoods = async () => {
+        if (!userId) return; // Garante que userId exista
+        try {
+            const foodsList = await foodsDatabase.listByCurrentDate(userId) as FoodDatabase[];
+            // console.log('Alimentos carregados:', foodsList); // Pode manter para debug
+            setFoods(foodsList);
+        } catch (error) {
+            console.error('Erro ao carregar alimentos:', error);
+            Alert.alert('Erro', 'Não foi possível carregar os alimentos');
+        }
+    };
+
     async function addFood() {
-        if (!validateInputs()) {
+        if (!validateInputs() || !userId) { // Adicionado verificação de userId
             return;
         }
 
         try {
-            const newFood = await foodsDatabase.create({
+            await foodsDatabase.create({ // Removida atribuição a newFood se não for usada
                 name: foodName,
                 calories: Number(calories),
                 date: new Date(), 
-                id_user: userId!
-            })
+                id_user: userId
+            });
             setFoodName('');
             setCalories('');
-            loadFoods();
+            loadFoods(); // Atualiza a lista após adicionar
         } catch (error) {
             console.error('Erro ao adicionar alimento:', error);
             Alert.alert('Erro', 'Não foi possível adicionar o alimento');
         }
     }
 
-    async function listFoodsByCurrentDate() {
-        try {
-            const foods = await foodsDatabase.listByCurrentDate(userId as number) as FoodDatabase[];
-            setFoods(foods);
-        } catch (error) {
-            console.error('Erro ao carregar alimentos:', error);
-            Alert.alert('Erro', 'Não foi possível carregar os alimentos');
-        }
-    }
-
-    // const loadFoods = async () => {
-    //     try {
-    //         const foodsList = await foodsDatabase.listByCurrentDate(user.id);
-    //         setFoods(foodsList);
-    //     } catch (error) {
-    //         console.error('Erro ao carregar alimentos:', error);
-    //         Alert.alert('Erro', 'Não foi possível carregar os alimentos');
-    //     }
-    // };
+    // Removida a função listFoodsByCurrentDate pois loadFoods faz o mesmo.
+    // Se preferir manter, certifique-se de que não haja duplicidade.
 
     useEffect(() => {
-        listFoodsByCurrentDate();
-    }, [foods]);
+        if (userId) { // Carrega os alimentos quando o userId estiver disponível/mudar
+            loadFoods();
+        }
+    }, [userId]); // Dependência corrigida
 
     const totalCalories = foods.reduce((total, food) => total + food.calories, 0);
 
@@ -100,98 +97,105 @@ export default function Home() {
         return isValid;
     };
 
-    const loadFoods = async () => {
-        try {
-            const foodsList = await foodsDatabase.listByCurrentDate(userId as number) as FoodDatabase[];
-            console.log('Alimentos carregados:', foodsList);
-            setFoods(foodsList);
-        } catch (error) {
-            console.error('Erro ao carregar alimentos:', error);
-            Alert.alert('Erro', 'Não foi possível carregar os alimentos');
-        }
-    };
+    // A função loadFoods já está definida acima e é chamada no useEffect e addFood
 
     return (
     <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-            <View style={styles.headerTop}>
-                <Text style={styles.title}>Contador de Calorias</Text>
-                <View style={styles.headerButtons}>
-                    <TouchableOpacity onPress={() => router.push('/configuracoes')} style={styles.iconButton}>
-                        <Ionicons name="settings-outline" size={24} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={signOut} style={styles.logoutButton}>
-                        <Ionicons name="log-out-outline" size={24} color="#ff6b6b" />
-                    </TouchableOpacity>
+        <ScrollView 
+            contentContainerStyle={styles.scrollContentContainer} 
+            showsVerticalScrollIndicator={false} // Opcional: para esconder a barra de rolagem
+        >
+            <View style={styles.header}>
+                <View style={styles.headerTop}>
+                    <Text style={styles.title}>Contador de Calorias</Text>
+                    <View style={styles.headerButtons}>
+                        <TouchableOpacity onPress={() => router.push('/configuracoes')} style={styles.iconButton}>
+                            <Ionicons name="settings-outline" size={20} color="white" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={signOut} style={styles.logoutButton}>
+                            <Ionicons name="log-out-outline" size={20} color="#ff6b6b" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
+                <Text style={styles.welcomeText}>Olá, {user.nome}!</Text>
             </View>
-            <Text style={styles.welcomeText}>Olá, {user.nome}!</Text>
-        </View>
-        
-        <View style={styles.calorieCard}>
-            <Text style={styles.calorieTitle}>Calorias Hoje</Text>
-            <Text style={styles.calorieCount}>{totalCalories}</Text>
-            <Text style={styles.calorieSubtitle}>kcal</Text>
-        </View>
-        
-        <View style={styles.addFoodSection}>
-            <Text style={styles.sectionTitle}>Adicionar Alimento</Text>
-            <Input 
-                placeholder="Nome do Alimento" 
-                value={foodName} 
-                onChangeText={setFoodName}
-                error={errors.foodName}
-            />
-            <Input 
-                placeholder="Calorias" 
-                value={calories} 
-                onChangeText={setCalories}
-                error={errors.calories}
-                keyboardType="numeric"
-            />
-            <TouchableOpacity style={styles.addButton} onPress={addFood}>
-                <Ionicons name="add-circle" size={24} color="white" />
-                <Text style={styles.addButtonText}>Adicionar</Text>
-            </TouchableOpacity>
-        </View>
-        
-        <View style={styles.foodListSection}>
-            <Text style={styles.sectionTitle}>Alimentos Consumidos Hoje</Text>
-            {foods.length === 0 ? (
-                <View style={styles.emptyList}>
-                    <Ionicons name="nutrition-outline" size={48} color="#ccc" />
-                    <Text style={styles.emptyText}>Nenhum alimento registrado hoje</Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={foods}
-                    keyExtractor={(item) => String(item.id)}
-                    renderItem={({item}) => (
-                        <View style={styles.foodItem}>
-                            <View style={styles.foodInfo}>
-                                <Text style={styles.foodName}>{item.name}</Text>
-                                <Text style={styles.foodTime}>
-                                    {new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </Text>
-                            </View>
-                            <View style={styles.calorieBadge}>
-                                <Text style={styles.calorieText}>{item.calories}</Text>
-                                <Text style={styles.calorieUnit}>kcal</Text>
-                            </View>
-                        </View>
-                    )}
-                    style={styles.foodList}
+            
+            <View style={styles.calorieCard}>
+                <Text style={styles.calorieTitle}>Calorias Hoje</Text>
+                <Text style={styles.calorieCount}>{totalCalories}</Text>
+                <Text style={styles.calorieSubtitle}>kcal</Text>
+            </View>
+            
+            <View style={styles.addFoodSection}>
+                <Text style={styles.sectionTitle}>Adicionar Alimento</Text>
+                <Input 
+                    placeholder="Nome do Alimento" 
+                    value={foodName} 
+                    onChangeText={setFoodName}
+                    error={errors.foodName}
+                    style={styles.input} 
                 />
-            )}
-        </View>
+                <Input 
+                    placeholder="Calorias" 
+                    value={calories} 
+                    onChangeText={setCalories}
+                    error={errors.calories}
+                    keyboardType="numeric"
+                    style={styles.input} 
+                />
+                <TouchableOpacity style={styles.addButton} onPress={addFood}>
+                    <Ionicons name="add-circle" size={24} color="white" />
+                    <Text style={styles.addButtonText}>Adicionar</Text>
+                </TouchableOpacity>
+            </View>
+            
+            <View style={styles.foodListSection}>
+                <Text style={styles.sectionTitle}>Alimentos Consumidos Hoje</Text>
+                {foods.length === 0 ? (
+                    <View style={styles.emptyList}>
+                        <Ionicons name="nutrition-outline" size={48} color="#ccc" />
+                        <Text style={styles.emptyText}>Nenhum alimento registrado hoje</Text>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={foods}
+                        keyExtractor={(item) => String(item.id)}
+                        renderItem={({item}) => (
+                            <View style={styles.foodItem}>
+                                <View style={styles.foodInfo}>
+                                    <Text style={styles.foodName}>{item.name}</Text>
+                                    <Text style={styles.foodTime}>
+                                        {new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </Text>
+                                </View>
+                                <View style={styles.calorieBadge}>
+                                    <Text style={styles.calorieText}>{item.calories}</Text>
+                                    <Text style={styles.calorieUnit}>kcal</Text>
+                                </View>
+                            </View>
+                        )}
+                        style={styles.foodList}
+                        // Se a FlatList estiver dentro de um ScrollView e você quiser que o ScrollView principal controle a rolagem:
+                        // scrollEnabled={false} 
+                        // No entanto, para listas potencialmente longas, é melhor deixar a FlatList gerenciar sua própria virtualização e rolagem interna.
+                        // Se a lista for pequena, scrollEnabled={false} pode ser uma opção para evitar conflitos de gestos.
+                        // Por agora, vamos manter o padrão da FlatList.
+                    />
+                )}
+            </View>
+        </ScrollView>
     </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
+        // height: '100%', // Removido, flex: 1 é suficiente
         flex: 1,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#f8f9fa', 
+    },
+    scrollContentContainer: { // Estilo para o container de conteúdo do ScrollView
+        paddingBottom: 20, // Adiciona um pouco de espaço no final do scroll
     },
     header: {
         padding: 20,
@@ -219,14 +223,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: 'rgba(255, 255, 255, 0.9)',
     },
-    logoutButton: {
+    logoutButton: { // Estilo para o botão de logout (segundo ícone)
         padding: 8,
+        marginLeft: 15, // Adiciona espaço à esquerda, separando do ícone de configurações
     },
-    headerButtons: {
+    headerButtons: { // Container dos botões de ícone no cabeçalho
         flexDirection: 'row',
+        alignItems: 'center', // Alinha os ícones verticalmente ao centro
     },
-    iconButton: {
-        marginLeft: 15,
+    iconButton: { // Estilo para o botão de configurações (primeiro ícone)
+        // marginLeft: 15, // Removido, pois é o primeiro item do grupo
+        padding: 8, // Adicionado para consistência da área de toque
     },
     calorieCard: {
         backgroundColor: 'white',
@@ -276,10 +283,12 @@ const styles = StyleSheet.create({
     },
     input: {
         borderWidth: 1,
+        height: 48,
         borderColor: '#e0e0e0',
         padding: 12,
         borderRadius: 8,
         fontSize: 16,
+        marginBottom: 12,
     },
     addButton: {
         backgroundColor: '#4CAF50',
@@ -298,10 +307,11 @@ const styles = StyleSheet.create({
     },
     foodListSection: {
         backgroundColor: 'white',
-        margin: 20,
+        marginHorizontal: 20, 
+        marginBottom: 20, 
         padding: 20,
         borderRadius: 15,
-        flex: 1,
+        // flex: 1, // Removido para permitir que o ScrollView controle o tamanho
         elevation: 3,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -309,7 +319,11 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
     },
     foodList: {
-        flex: 1,
+        // flex: 1, // Removido, a FlatList se ajustará ao seu conteúdo ou ao espaço dado pelo foodListSection
+        // Se a lista for muito longa e estiver dentro de um ScrollView, pode ser necessário
+        // dar uma altura explícita ou garantir que o pai (foodListSection) não tenha flex:1
+        // para que a FlatList não tente renderizar infinitamente.
+        // No nosso caso, foodListSection não tem mais flex:1, então a FlatList deve se comportar bem.
     },
     foodItem: {
         flexDirection: 'row',

@@ -43,6 +43,28 @@ export function useUsersDatabase() {
         }
     }
 
+    async function updatePasswordByEmail(email: string, newPassword: string) {
+        const query = "UPDATE users SET password = $password WHERE email = $email;";
+        const statement = await database.prepareAsync(query);
+
+        console.log("Atualizando senha para email:", email);
+        console.log("Nova senha:", newPassword);
+        try {
+            const result = await statement.executeAsync({ $email: email, $password: newPassword });
+            // result.changes indica o número de linhas afetadas pelo UPDATE.
+            // Se for > 0, a senha foi alterada.
+            return result; 
+        } catch (error) {
+            console.error("Erro ao atualizar senha por email:", error);
+            // Considerar se deve retornar false ou relançar o erro,
+            // dependendo de como você quer que a tela de login trate isso.
+            // Relançar permite que a tela de login saiba que houve um erro na operação.
+            throw error; 
+        } finally {
+            await statement.finalizeAsync();
+        }
+    }
+
     async function update(id: number, data: Partial<Omit<UserDatabase, "id">>) {
         const updates = [];
         const params: Record<string, any> = { $id: id };
@@ -95,5 +117,5 @@ export function useUsersDatabase() {
             }
         }
 
-    return { create, findByEmail, update, searchUser };
+    return { create, findByEmail, update, searchUser,updatePasswordByEmail };
 }

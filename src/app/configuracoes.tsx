@@ -228,14 +228,15 @@ const styles = StyleSheet.create({
     },
     section: {
         backgroundColor: 'white',
-        borderRadius: 15,
         padding: 20,
+        borderRadius: 15,
         marginBottom: 20,
         elevation: 3,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        gap: 16, // Adicionado para espaçamento entre os elementos da seção
     },
     sectionTitle: {
         fontSize: 18,
@@ -269,4 +270,4 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginLeft: 8,
     },
-}); 
+});
