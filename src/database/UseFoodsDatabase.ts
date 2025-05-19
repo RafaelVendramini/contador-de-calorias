@@ -36,7 +36,7 @@ export function useFoodsDatabase() {
     async function listByCurrentDate(userID: number) {
         try {
             // Query corrigida para usar a coluna 'date' da tabela 'foods'
-            const query = "SELECT * FROM foods WHERE DATE(date) = DATE('now') AND id_user = ?;";
+            const query = "SELECT * FROM foods WHERE DATE(current_date) = DATE('now') AND id_user = ?;";
             const foods = await database.getAllAsync(query, [userID]);
             return foods;
         } catch (error) {
