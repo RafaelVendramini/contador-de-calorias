@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import {View, Text, Alert, StyleSheet, TouchableOpacity} from 'react-native'; // Alterado: Adicionado StyleSheet, TouchableOpacity e removido Button
+import {View, Text, StyleSheet, TouchableOpacity} from 'react-native'; // Removido Alert
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message'; // Adicionado import do Toast
 
 import { Input } from '@/components/Input';
 import {useUsersDatabase} from "@/database/UseUsersDatabase"
@@ -61,11 +62,21 @@ export default function Cadastro () {
             // Faz login automático após o cadastro
             await signIn(email, password);
             
-            Alert.alert("Sucesso", "Cadastro realizado com sucesso!");
+            Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'Cadastro realizado com sucesso!',
+                position: 'top',
+            });
             router.push('/home');
         } catch (error) {
             console.error(error);
-            Alert.alert("Erro", "Ocorreu um erro ao realizar o cadastro");
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Ocorreu um erro ao realizar o cadastro',
+                position: 'top',
+            });
         }
     }
 

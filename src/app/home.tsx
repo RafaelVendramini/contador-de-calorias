@@ -1,6 +1,6 @@
 import { Redirect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { FlatList, Text, View, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { FlatList, Text, View, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, TextInput } from "react-native";
 import { useState, useEffect } from "react";
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useFoodsDatabase, FoodDatabase } from "@/database/UseFoodsDatabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from '@/components/Input';
+import Toast from "react-native-toast-message";
 
 export default function Home() {
     const [foodName, setFoodName] = useState('');
@@ -17,8 +18,12 @@ export default function Home() {
         foodName: '',
         calories: ''
     });
-
-    const { user, signOut } = useAuth();
+    const [modalVisible, setModalVisible] = useState(false);
+    const [calorieGoal, setCalorieGoal] = useState('');
+    const [calorieGoalError, setCalorieGoalError] = useState('');
+    // Novo estado para o modal de sugestões
+    const [suggestionsModalVisible, setSuggestionsModalVisible] = useState(false);
+    const { user, signOut, updateCalorieGoal } = useAuth();
     const router = useRouter();
     const foodsDatabase = useFoodsDatabase();
 
@@ -28,6 +33,49 @@ export default function Home() {
     if (!user) {
         return <Redirect href="/login" />;
     }
+
+    // Inicializa o campo de meta diária com o valor do usuário, se existir
+    useEffect(() => {
+        if (user?.metaDiaria) {
+            setCalorieGoal(user.metaDiaria.toString());
+        }
+    }, [user]);
+
+    // Função para validar e salvar a meta diária
+    const handleSaveCalorieGoal = async () => {
+        // Validação do input
+        if (!calorieGoal.trim()) {
+            setCalorieGoalError('A meta diária é obrigatória');
+            return;
+        }
+        
+        const goalValue = Number(calorieGoal);
+        if (isNaN(goalValue) || goalValue <= 0) {
+            setCalorieGoalError('Digite um valor válido para a meta diária');
+            return;
+        }
+        
+        setCalorieGoalError('');
+        
+        try {
+            await updateCalorieGoal(goalValue);
+            setModalVisible(false);
+            Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'Meta diária atualizada com sucesso!',
+                position: 'top',
+            });
+        } catch (error) {
+            console.error('Erro ao atualizar meta diária:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Não foi possível atualizar a meta diária',
+                position: 'top'
+            });
+        }
+    };
 
     const loadFoods = async () => {
         if (!userId) return; // Garante que userId exista
@@ -99,11 +147,194 @@ export default function Home() {
 
     // A função loadFoods já está definida acima e é chamada no useEffect e addFood
 
+    // Adicione esta função para deletar um alimento
+    async function handleDeleteFood(id: number) {
+        try {
+            await foodsDatabase.deleteFood(id);
+            // Recarregar a lista após deletar
+            loadFoods();
+            Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'Alimento removido com sucesso!',
+                position: 'top',
+            
+            })
+        } catch (error) {
+            console.error("Erro ao deletar alimento:", error);
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Não foi possível remover o alimento',
+                position: 'top'
+            });
+        }
+    }
+
     return (
     <SafeAreaView style={styles.container}>
+        {/* Modal para definir meta diária */}
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => setModalVisible(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Definir Meta Diária</Text>
+                        <TouchableOpacity 
+                            onPress={() => setModalVisible(false)}
+                            style={styles.modalCloseButton}
+                        >
+                            <Ionicons name="close" size={24} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+                    
+                    <Text style={styles.modalText}>
+                        Defina sua meta diária de calorias para acompanhar seu progresso.
+                    </Text>
+                    
+                    <TextInput
+                        style={[styles.modalInput, calorieGoalError ? styles.inputError : null]}
+                        placeholder="Meta diária (calorias)"
+                        value={calorieGoal}
+                        onChangeText={setCalorieGoal}
+                        keyboardType="numeric"
+                    />
+                    {calorieGoalError ? (
+                        <Text style={styles.errorText}>{calorieGoalError}</Text>
+                    ) : null}
+                    
+                    <TouchableOpacity 
+                        style={styles.modalButton}
+                        onPress={handleSaveCalorieGoal}
+                    >
+                        <Text style={styles.modalButtonText}>Salvar</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+
+        {/* Novo Modal para sugestões de alimentos */}
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={suggestionsModalVisible}
+            onRequestClose={() => setSuggestionsModalVisible(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Sugestões de Alimentos</Text>
+                        <TouchableOpacity 
+                            onPress={() => setSuggestionsModalVisible(false)}
+                            style={styles.modalCloseButton}
+                        >
+                            <Ionicons name="close" size={24} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+                    
+                    <Text style={styles.modalText}>
+                        Confira algumas sugestões de alimentos e suas calorias para o seu dia:
+                    </Text>
+                    
+                    <ScrollView style={styles.suggestionsScrollView}>
+                        {/* Lista de sugestões de alimentos */}
+                        <View style={styles.suggestionItem}>
+                            <View style={styles.suggestionInfo}>
+                                <Text style={styles.suggestionName}>Maçã</Text>
+                                <Text style={styles.suggestionDescription}>Fruta rica em fibras e vitaminas</Text>
+                            </View>
+                            <View style={styles.calorieBadge}>
+                                <Text style={styles.calorieText}>52</Text>
+                                <Text style={styles.calorieUnit}>kcal</Text>
+                            </View>
+                        </View>
+                        
+                        <View style={styles.suggestionItem}>
+                            <View style={styles.suggestionInfo}>
+                                <Text style={styles.suggestionName}>Iogurte Natural</Text>
+                                <Text style={styles.suggestionDescription}>Rico em proteínas e probióticos</Text>
+                            </View>
+                            <View style={styles.calorieBadge}>
+                                <Text style={styles.calorieText}>59</Text>
+                                <Text style={styles.calorieUnit}>kcal</Text>
+                            </View>
+                        </View>
+                        
+                        <View style={styles.suggestionItem}>
+                            <View style={styles.suggestionInfo}>
+                                <Text style={styles.suggestionName}>Ovo cozido</Text>
+                                <Text style={styles.suggestionDescription}>Excelente fonte de proteína</Text>
+                            </View>
+                            <View style={styles.calorieBadge}>
+                                <Text style={styles.calorieText}>78</Text>
+                                <Text style={styles.calorieUnit}>kcal</Text>
+                            </View>
+                        </View>
+                        
+                        <View style={styles.suggestionItem}>
+                            <View style={styles.suggestionInfo}>
+                                <Text style={styles.suggestionName}>Aveia</Text>
+                                <Text style={styles.suggestionDescription}>Rica em fibras e nutrientes</Text>
+                            </View>
+                            <View style={styles.calorieBadge}>
+                                <Text style={styles.calorieText}>68</Text>
+                                <Text style={styles.calorieUnit}>kcal/2 colh.</Text>
+                            </View>
+                        </View>
+                        
+                        <View style={styles.suggestionItem}>
+                            <View style={styles.suggestionInfo}>
+                                <Text style={styles.suggestionName}>Peito de frango grelhado</Text>
+                                <Text style={styles.suggestionDescription}>Alto teor de proteína, baixo em gordura</Text>
+                            </View>
+                            <View style={styles.calorieBadge}>
+                                <Text style={styles.calorieText}>165</Text>
+                                <Text style={styles.calorieUnit}>kcal/100g</Text>
+                            </View>
+                        </View>
+                        
+                        <View style={styles.suggestionItem}>
+                            <View style={styles.suggestionInfo}>
+                                <Text style={styles.suggestionName}>Banana</Text>
+                                <Text style={styles.suggestionDescription}>Rica em potássio e carboidratos</Text>
+                            </View>
+                            <View style={styles.calorieBadge}>
+                                <Text style={styles.calorieText}>89</Text>
+                                <Text style={styles.calorieUnit}>kcal</Text>
+                            </View>
+                        </View>
+                        
+                        <View style={styles.suggestionItem}>
+                            <View style={styles.suggestionInfo}>
+                                <Text style={styles.suggestionName}>Arroz integral</Text>
+                                <Text style={styles.suggestionDescription}>Rico em fibras e nutrientes</Text>
+                            </View>
+                            <View style={styles.calorieBadge}>
+                                <Text style={styles.calorieText}>112</Text>
+                                <Text style={styles.calorieUnit}>kcal/100g</Text>
+                            </View>
+                        </View>
+                    </ScrollView>
+                    
+                    <TouchableOpacity 
+                        style={styles.modalButton}
+                        onPress={() => {
+                            setSuggestionsModalVisible(false);
+                        }}
+                    >
+                        <Text style={styles.modalButtonText}>Fechar</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+
         <ScrollView 
             contentContainerStyle={styles.scrollContentContainer} 
-            showsVerticalScrollIndicator={false} // Opcional: para esconder a barra de rolagem
+            showsVerticalScrollIndicator={false}
         >
             <View style={styles.header}>
                 <View style={styles.headerTop}>
@@ -119,12 +350,39 @@ export default function Home() {
                 </View>
                 <Text style={styles.welcomeText}>Olá, {user.nome}!</Text>
             </View>
+
+            {/* Container condicional para meta diária vazia */}
+            {!user.metaDiaria && (
+                <View style={styles.goalEmptyContainer}>
+                    <Ionicons name="alert-circle-outline" size={24} color="#ff9800" />
+                    <Text style={styles.goalEmptyText}>
+                        Você ainda não definiu sua meta diária de calorias!
+                    </Text>
+                    <TouchableOpacity 
+                        style={styles.goalEmptyButton}
+                        onPress={() => setModalVisible(true)}
+                    >
+                        <Text style={styles.goalEmptyButtonText}>Definir Meta</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
             
             <View style={styles.calorieCard}>
                 <Text style={styles.calorieTitle}>Calorias Hoje</Text>
-                <Text style={styles.calorieCount}>{totalCalories}</Text>
+                <Text style={styles.calorieCount}>{totalCalories} de {user.metaDiaria ? user.metaDiaria : 0}</Text>
                 <Text style={styles.calorieSubtitle}>kcal</Text>
             </View>
+            
+            {/* Novo botão para abrir o modal de sugestões */}
+            <TouchableOpacity 
+                style={styles.suggestionsButton}
+                onPress={() => setSuggestionsModalVisible(true)}
+            >
+                <View style={styles.suggestionsButtonContent}>
+                    <Ionicons name="restaurant-outline" size={24} color="white" />
+                    <Text style={styles.suggestionsButtonText}>Sugestões de Alimentos</Text>
+                </View>
+            </TouchableOpacity>
             
             <View style={styles.addFoodSection}>
                 <Text style={styles.sectionTitle}>Adicionar Alimento</Text>
@@ -164,13 +422,30 @@ export default function Home() {
                             <View style={styles.foodItem}>
                                 <View style={styles.foodInfo}>
                                     <Text style={styles.foodName}>{item.name}</Text>
-                                    <Text style={styles.foodTime}>
+                                    {/* <Text style={styles.foodTime}>
                                         {new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                    </Text>
+                                    </Text> */}
                                 </View>
-                                <View style={styles.calorieBadge}>
-                                    <Text style={styles.calorieText}>{item.calories}</Text>
-                                    <Text style={styles.calorieUnit}>kcal</Text>
+                                <View style={styles.foodActions}>
+                                    <View style={styles.calorieBadge}>
+                                        <Text style={styles.calorieText}>{item.calories}</Text>
+                                        <Text style={styles.calorieUnit}>kcal</Text>
+                                    </View>
+                                    <TouchableOpacity 
+                                        style={styles.deleteButton}
+                                        onPress={() => {
+                                            Alert.alert(
+                                                "Confirmar exclusão",
+                                                `Deseja remover ${item.name}?`,
+                                                [
+                                                    { text: "Cancelar", style: "cancel" },
+                                                    { text: "Excluir", onPress: () => handleDeleteFood(item.id), style: "destructive" }
+                                                ]
+                                            );
+                                        }}
+                                    >
+                                        <Ionicons name="trash-outline" size={20} color="#ff6b6b" />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
                         )}
@@ -185,6 +460,108 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+    // Estilos para o modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 15,
+        padding: 20,
+        width: '100%',
+        maxWidth: 400,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    modalCloseButton: {
+        padding: 5,
+    },
+    modalText: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 16,
+    },
+    modalInput: {
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        marginBottom: 8,
+    },
+    inputError: {
+        borderColor: '#ff6b6b',
+    },
+    errorText: {
+        color: '#ff6b6b',
+        fontSize: 12,
+        marginBottom: 16,
+    },
+    modalButton: {
+        backgroundColor: '#4CAF50',
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    modalButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+
+    // Adicione estes novos estilos
+    goalEmptyContainer: {
+        backgroundColor: '#fff8e1',
+        margin: 20,
+        padding: 16,
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: '#ffe0b2',
+        alignItems: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    goalEmptyText: {
+        fontSize: 14,
+        color: '#f57c00',
+        textAlign: 'center',
+        marginTop: 8,
+        marginBottom: 12,
+    },
+    goalEmptyButton: {
+        backgroundColor: '#ff9800',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+    },
+    goalEmptyButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+
     container: {
         // height: '100%', // Removido, flex: 1 é suficiente
         flex: 1,
@@ -342,12 +719,20 @@ const styles = StyleSheet.create({
         color: '#999',
         marginTop: 4,
     },
+    foodActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12, // Espaçamento entre o badge de calorias e o botão de deletar
+    },
     calorieBadge: {
         backgroundColor: '#f0f7f0',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,
         alignItems: 'center',
+    },
+    deleteButton: {
+        padding: 8,
     },
     calorieText: {
         fontSize: 16,
@@ -369,5 +754,57 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#999',
         textAlign: 'center',
+    },
+    suggestionsButton: {
+        backgroundColor: '#8bc34a',
+        marginHorizontal: 20,
+        marginTop: -10,
+        marginBottom: 20,
+        borderRadius: 10,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    suggestionsButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 14,
+    },
+    suggestionsButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
+        marginLeft: 10,
+    },
+    
+    // Estilos para o modal de sugestões
+    suggestionsScrollView: {
+        maxHeight: 400,
+        marginBottom: 16,
+    },
+    suggestionItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    suggestionInfo: {
+        flex: 1,
+        paddingRight: 10,
+    },
+    suggestionName: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
+    },
+    suggestionDescription: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 4,
     },
 });

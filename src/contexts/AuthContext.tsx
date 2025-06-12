@@ -6,6 +6,7 @@ type User = {
     id: number;
     nome: string;
     email: string;
+    metaDiaria?: number; // Adicionado campo para meta diária
 }
 
 type AuthContextData = {
@@ -15,6 +16,7 @@ type AuthContextData = {
     signOut: () => void;
     updateUser: (data: Partial<Omit<User, 'id'>>) => Promise<void>;
     updatePassword: (senhaAtual: string, novaSenha: string) => Promise<void>;
+    updateCalorieGoal: (metaDiaria: number) => Promise<void>; // Nova função para atualizar meta diária
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -44,7 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser({
                 id: user.id,
                 nome: user.name,
-                email: user.email
+                email: user.email,
+                metaDiaria: user.metaDiary // Adicionado para carregar a meta diária
             });
 
             router.replace('/home');
@@ -134,8 +137,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const updateCalorieGoal = async (metaDiaria: number) => {
+        if (!user) {
+            throw new Error('Usuário não autenticado');
+        }
+
+        try {
+            await userDatabase.updateCalorieGoal(user.id, metaDiaria);
+
+            // Atualiza o estado do usuário com a nova meta diária
+            setUser({
+                ...user,
+                metaDiaria
+            });
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, signIn, signUp, signOut, updateUser, updatePassword }}>
+        <AuthContext.Provider value={{ 
+            user, 
+            signIn, 
+            signUp, 
+            signOut, 
+            updateUser, 
+            updatePassword,
+            updateCalorieGoal // Adicionada nova função ao contexto
+        }}>
             {children}
         </AuthContext.Provider>
     );
@@ -149,4 +179,4 @@ export function useAuth() {
     }
 
     return context;
-} 
+}

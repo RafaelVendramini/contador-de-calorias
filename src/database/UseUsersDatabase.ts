@@ -5,6 +5,7 @@ export type UserDatabase = {
     nome: string;
     email: string;
     senha: string;
+    metaDiaria?: number; // Adicionado campo para meta diária
 }
 
 export function useUsersDatabase() {
@@ -35,7 +36,7 @@ export function useUsersDatabase() {
 
     async function findByEmail(email: string) {
         try {
-            const query = "SELECT id, name, email, password FROM users WHERE email = $email;";
+            const query = "SELECT id, name, email, password, metaDiary FROM users WHERE email = $email;";
             const users = await database.getAllAsync(query, { $email: email });
             return users[0];
         } catch (error) {
@@ -117,5 +118,20 @@ export function useUsersDatabase() {
             }
         }
 
-    return { create, findByEmail, update, searchUser,updatePasswordByEmail };
+    async function updateCalorieGoal(id: number, metaDiaria: number) {
+        const query = "UPDATE users SET metaDiary = $metaDiary WHERE id = $id;";
+        const statement = await database.prepareAsync(query);
+
+        try {
+            await statement.executeAsync({ $id: id, $metaDiary: metaDiaria });
+            return true;
+        } catch (error) {
+            console.error("Erro ao atualizar meta diária:", error);
+            throw error;
+        } finally {
+            await statement.finalizeAsync();
+        }
+    }
+
+    return { create, findByEmail, update, searchUser, updatePasswordByEmail, updateCalorieGoal };
 }

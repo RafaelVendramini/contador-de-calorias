@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import {Text, Alert, Modal, View, TouchableOpacity, StyleSheet } from 'react-native'; // Alterado: Adicionado StyleSheet e removido Button
+import {Text, Modal, View, TouchableOpacity, StyleSheet } from 'react-native'; // Removido Alert
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
 import { useUsersDatabase } from '@/database/UseUsersDatabase';
 import { useAuth } from '@/contexts/AuthContext';
+import Toast from 'react-native-toast-message'; // Adicionado import do Toast
 
 import { Link, useRouter } from "expo-router";
 
@@ -55,22 +56,42 @@ export default function Login() {
                 await signIn(email, password);
                 router.push('/home');
             } else {
-                Alert.alert("Erro", "Email ou senha incorretos");
+                Toast.show({
+                    type: 'error',
+                    text1: 'Erro',
+                    text2: 'Email ou senha incorretos',
+                    position: 'top',
+                });
             }
         } catch (error) {
             console.error(error);
-            Alert.alert("Erro", "Ocorreu um erro ao fazer login");
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Ocorreu um erro ao fazer login',
+                position: 'top',
+            });
         }
     }
 
     async function handlePasswordRecovery() {
         if (!recoveryEmail.trim() || !/\S+@\S+\.\S+/.test(recoveryEmail)) {
-            Alert.alert("Erro", "Digite um email válido para recuperação.");
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Digite um email válido para recuperação.',
+                position: 'top',
+            });
             return;
         }
 
         if (!newPassword.trim()) {
-            Alert.alert("Erro", "A nova senha não pode estar vazia.");
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'A nova senha não pode estar vazia.',
+                position: 'top',
+            });
             return;
         }
 
@@ -84,19 +105,39 @@ export default function Login() {
                 const success = await userDataBase.updatePasswordByEmail(recoveryEmail, newPassword); 
                 
                 if (success) {
-                    Alert.alert("Sucesso", "Senha atualizada com sucesso!");
+                    Toast.show({
+                        type: 'success',
+                        text1: 'Sucesso',
+                        text2: 'Senha atualizada com sucesso!',
+                        position: 'top',
+                    });
                     setModalVisible(false);
                     setRecoveryEmail('');
                     setNewPassword(''); 
                 } else {
-                    Alert.alert("Erro", "Não foi possível atualizar a senha. Tente novamente.");
+                    Toast.show({
+                        type: 'error',
+                        text1: 'Erro',
+                        text2: 'Não foi possível atualizar a senha. Tente novamente.',
+                        position: 'top',
+                    });
                 }
             } else {
-                Alert.alert("Erro", "Email não encontrado em nossa base de dados.");
+                Toast.show({
+                    type: 'error',
+                    text1: 'Erro',
+                    text2: 'Email não encontrado em nossa base de dados.',
+                    position: 'top',
+                });
             }
         } catch (error) {
             console.error("Erro na recuperação de senha:", error);
-            Alert.alert("Erro", "Ocorreu um erro ao processar sua solicitação de recuperação de senha.");
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Ocorreu um erro ao processar sua solicitação de recuperação de senha.',
+                position: 'top',
+            });
         }
     }
 

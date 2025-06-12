@@ -7,6 +7,7 @@ export async function initializeDatabase(database: SQLiteDatabase) {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL, 
             email TEXT NOT NULL, 
+            metaDiary INTEGER ,
             password TEXT NOT NULL
         );
         

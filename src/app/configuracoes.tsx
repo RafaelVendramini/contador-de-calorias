@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Toast from "react-native-toast-message"; // Importação do Toast
 
 import { Input } from '@/components/Input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,21 +14,28 @@ export default function Configuracoes() {
     const [senhaAtual, setSenhaAtual] = useState('');
     const [novaSenha, setNovaSenha] = useState('');
     const [confirmarSenha, setConfirmarSenha] = useState('');
+    // Novo estado para meta diária de calorias
+    const [metaDiaria, setMetaDiaria] = useState('');
     const [errors, setErrors] = useState({
         nome: '',
         email: '',
         senhaAtual: '',
         novaSenha: '',
-        confirmarSenha: ''
+        confirmarSenha: '',
+        metaDiaria: '' // Adicionado campo para erro da meta diária
     });
 
-    const { user, signOut, updateUser, updatePassword } = useAuth();
+    const { user, signOut, updateUser, updatePassword, updateCalorieGoal } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
         if (user) {
             setNome(user.nome);
             setEmail(user.email);
+            // Inicializa o campo de meta diária com o valor do usuário, se existir
+            if (user.metaDiaria) {
+                setMetaDiaria(user.metaDiaria.toString());
+            }
         }
     }, [user]);
 
@@ -38,7 +46,8 @@ export default function Configuracoes() {
             email: '',
             senhaAtual: '',
             novaSenha: '',
-            confirmarSenha: ''
+            confirmarSenha: '',
+            metaDiaria: '' // Adicionado campo para erro da meta diária
         };
 
         // Validação do nome
@@ -92,14 +101,24 @@ export default function Configuracoes() {
                 email
             });
 
-            Alert.alert(
-                "Sucesso",
-                "Suas informações foram atualizadas com sucesso!",
-                [{ text: "OK", onPress: () => router.back() }]
-            );
+            // Substituído Alert por Toast
+            Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'Suas informações foram atualizadas com sucesso!',
+                position: 'top',
+            });
+            
+            router.back();
         } catch (error) {
             console.error(error);
-            Alert.alert("Erro", "Ocorreu um erro ao atualizar suas informações");
+            // Substituído Alert por Toast
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Ocorreu um erro ao atualizar suas informações',
+                position: 'top',
+            });
         }
     };
 
@@ -111,18 +130,70 @@ export default function Configuracoes() {
         try {
             await updatePassword(senhaAtual, novaSenha);
 
-            Alert.alert(
-                "Sucesso",
-                "Sua senha foi alterada com sucesso!",
-                [{ text: "OK", onPress: () => {
-                    setSenhaAtual('');
-                    setNovaSenha('');
-                    setConfirmarSenha('');
-                }}]
-            );
+            // Substituído Alert por Toast
+            Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'Sua senha foi alterada com sucesso!',
+                position: 'top',
+            });
+            
+            setSenhaAtual('');
+            setNovaSenha('');
+            setConfirmarSenha('');
         } catch (error) {
             console.error(error);
-            Alert.alert("Erro", "Ocorreu um erro ao alterar sua senha");
+            // Substituído Alert por Toast
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Ocorreu um erro ao alterar sua senha',
+                position: 'top',
+            });
+        }
+    };
+
+    // Nova função para validar e salvar a meta diária
+    const salvarMetaDiaria = async () => {
+        // Validação do input
+        const newErrors = { ...errors };
+        let isValid = true;
+
+        if (!metaDiaria.trim()) {
+            newErrors.metaDiaria = 'A meta diária é obrigatória';
+            isValid = false;
+        } else {
+            const goalValue = Number(metaDiaria);
+            if (isNaN(goalValue) || goalValue <= 0) {
+                newErrors.metaDiaria = 'Digite um valor válido para a meta diária';
+                isValid = false;
+            }
+        }
+
+        setErrors(newErrors);
+
+        if (!isValid) {
+            return;
+        }
+
+        try {
+            await updateCalorieGoal(Number(metaDiaria));
+            // Substituído Alert por Toast
+            Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'Meta diária atualizada com sucesso!',
+                position: 'top',
+            });
+        } catch (error) {
+            console.error('Erro ao atualizar meta diária:', error);
+            // Substituído Alert por Toast
+            Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Ocorreu um erro ao atualizar sua meta diária',
+                position: 'top',
+            });
         }
     };
 
@@ -130,6 +201,7 @@ export default function Configuracoes() {
         return null;
     }
 
+    // O restante do código permanece o mesmo
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -159,6 +231,21 @@ export default function Configuracoes() {
                     />
                     <TouchableOpacity style={styles.button} onPress={salvarAlteracoes}>
                         <Text style={styles.buttonText}>Salvar Alterações</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Nova seção para Meta Diária de Calorias */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Meta Diária de Calorias</Text>
+                    <Input 
+                        placeholder="Meta diária (calorias)" 
+                        value={metaDiaria} 
+                        onChangeText={setMetaDiaria}
+                        error={errors.metaDiaria}
+                        keyboardType="numeric"
+                    />
+                    <TouchableOpacity style={styles.button} onPress={salvarMetaDiaria}>
+                        <Text style={styles.buttonText}>Salvar Meta Diária</Text>
                     </TouchableOpacity>
                 </View>
 

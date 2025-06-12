@@ -44,5 +44,21 @@ export function useFoodsDatabase() {
         }
     }
 
-    return { create, listByCurrentDate };
+    async function deleteFood(id: number) {
+        const statement = await database.prepareAsync(
+            "DELETE FROM foods WHERE id = ?;"
+        );
+
+        try {
+            await statement.executeAsync([id]);
+            return true;
+        } catch (error) {
+            console.error("Erro ao deletar alimento:", error);
+            throw error;
+        } finally {
+            await statement.finalizeAsync();
+        }
+    }
+
+    return { create, listByCurrentDate, deleteFood };
 }
